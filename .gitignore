@@ -43,3 +43,7 @@ Icon?
 
 # Keep .gitignore itself
 !.gitignore
+
+# pytest results
+report.html
+assets/
