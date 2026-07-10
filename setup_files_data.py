@@ -60,7 +60,8 @@ text = None
 with MDMDocument(filename,'open') as MDD:
     text = MDD.document.Script
 
-print(text)
+# print(text) # <- not working for unicode - it works in normal terminal but fails within git with "charmap codec can't decode characters..."
+sys.stdout.buffer.write(text.encode('utf-8'))
             '''
         ),
         (
