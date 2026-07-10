@@ -45,14 +45,18 @@ def write_program_files(path,files_data):
     # print(f'{n_processed} files written')
 
 
-def call_executable(subprocess_args,path,timeout,scope):
+def call_executable(subprocess_args,path,timeout,scope,input=None):
     print(f'{scope}: launch executable; to verify: path == "{path}", callable == "{subprocess_args[0]}"')
+    argsadd = []
+    if input:
+        argsadd['input'] = input
     subprocess_results = subprocess.run(
         subprocess_args,
         cwd = path,
         capture_output=True,
         text=True,
         timeout=timeout,
+        **argsadd,
     )
     if subprocess_results.stdout.strip():
         for line in subprocess_results.stdout.splitlines(keepends=False):
@@ -62,7 +66,7 @@ def call_executable(subprocess_args,path,timeout,scope):
             print(f'{scope}: {STDOUT_COLOR_RED}{line}{STDOUT_COLOR_RESET}',file=sys.stderr)
     assert subprocess_results.returncode == 0, f'Failed:\nreturncode == {repr(subprocess_results.returncode)}'
     print(f'success, status == {subprocess_results.returncode}')
-    subprocess_results = None
+    return subprocess_results
 
 
 def get_python_base_exe():
