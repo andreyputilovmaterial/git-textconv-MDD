@@ -4,6 +4,7 @@ from datetime import datetime, timezone # to capture timestamp, to be possibly u
 from pathlib import Path # for its main purpose
 import subprocess # to start subprocess, thanks captain obvious
 import os # to get base python executable from within venv
+import re # to assess existing git config
 
 
 # STDOUT_COLOR_RED = "\033[91m"
@@ -49,13 +50,13 @@ def write_program_files(path,files_data):
     # print(f'{n_processed} files written')
 
 
-def call_executable(subprocess_args,path,timeout,scope,input=None):
+def call_executable(subprocess_args,path,timeout,scope,input=None,allow_nonzero_status=False):
     """Self-written wrapper to ease launching of an executable
     
     Will grab outputs and manage it
     
     "scope" means part added to the beginning of every line in outputs"""
-    print(f'{scope}: launch executable; to verify: path == "{path}", callable == "{subprocess_args[0]}"')
+    # print(f'{scope}: launch executable; to verify: path == "{path}", callable == "{subprocess_args[0]}"')
     argsadd = {}
     if input:
         argsadd['input'] = input
@@ -74,8 +75,9 @@ def call_executable(subprocess_args,path,timeout,scope,input=None):
     if subprocess_results.stderr.strip():
         for line in subprocess_results.stderr.splitlines(keepends=False):
             print(f'{scope}: {STDOUT_COLOR_RED}{line}{STDOUT_COLOR_RESET}',file=sys.stderr)
-    assert subprocess_results.returncode == 0, f'Failed:\nreturncode == {repr(subprocess_results.returncode)}'
-    print(f'success, status == {subprocess_results.returncode}')
+    if not allow_nonzero_status:
+        assert subprocess_results.returncode == 0, f'Failed:\nreturncode == {repr(subprocess_results.returncode)}'
+    # print(f'success, status == {subprocess_results.returncode}')
     return subprocess_results
 
 
@@ -187,6 +189,38 @@ def call_install_copy_program_files_program(*argcs,**kwargs):
 def call_install_git_register_program(*argcs,**kwargs):
     """Adds global config to git"""
 
+    def update_git_config(path):
+        path_python_executable = Path(Path(path) / '.venv/Scripts/python.exe').resolve()
+        path_py_script = Path(Path(path) / 'extract.py').resolve()
+        subprocess_args = [
+                'git',
+                'config',
+                '--global',
+                'diff.mdd.textconv',
+                f'"{path_python_executable}" "{path_py_script}"',
+            ]
+        call_executable(subprocess_args,path,60,'git config',allow_nonzero_status=True)
+    
+    def read_git_config():
+        subprocess_args = [
+                'git',
+                'config',
+                '--global',
+                '--get',
+                'diff.mdd.textconv',
+            ]
+        results = call_executable(subprocess_args,path,60,'git config',allow_nonzero_status=True)
+        return results.stdout
+    
+    def safety_validate_existing_git_config(config_str):
+        # results = read_git_config()
+        results = config_str
+        if not results:
+            return True
+        if re.match(r'.*\bextract.py\b(?:\s+[\-\w]+)*[\\"\']*',results):
+            return True
+        return False
+
     time_start = datetime.now()
     script_name = 'git-textconv-mdd script'
 
@@ -214,22 +248,103 @@ def call_install_git_register_program(*argcs,**kwargs):
     else:
         raise FileNotFoundError('path: path not provided; please use --path option')
     
-    path_python_executable = Path(path) / '.venv/Scripts/python.exe'
-    path_py_script = Path(path) / 'extract.py'
-    
-
     # print(f'{script_name}: script started at {time_start}')
 
-    subprocess_args = [
-            'git',
-            'config',
-            '--global',
-            'diff.mdd.textconv',
-            f'"{path_python_executable}" "{path_py_script}"',
-        ]
-    call_executable(subprocess_args,path,60,'git config')
+    existing_config = read_git_config()
+    safety_validate = safety_validate_existing_git_config(existing_config)
+    if safety_validate:
+        print(f'Checking existing config: passed ({existing_config})')
+    else:
+        print(f'Checking existing config: {STDOUT_COLOR_RED}failed{STDOUT_COLOR_RESET} ({existing_config})')
+        sys.exit(0)
+    
+    update_git_config(path)
 
     print(f'{script_name}: {STDOUT_COLOR_GREEN}Done!"{STDOUT_COLOR_RESET}')
+
+    time_finish = datetime.now()
+    # print(f'{script_name}: finished at {time_finish} (elapsed {time_finish-time_start})')
+
+def call_install_git_update_global_gitattributes(*argcs,**kwargs):
+    """Adds global config to git"""
+
+    def update_git_config(path):
+        path_gitattributes_global = path
+        subprocess_args = [
+                'git',
+                'config',
+                '--global',
+                'core.attributesFile',
+                f'{path_gitattributes_global}',
+            ]
+        call_executable(subprocess_args,'.',60,'git config',allow_nonzero_status=True)
+    
+    def read_git_config():
+        subprocess_args = [
+                'git',
+                'config',
+                '--global',
+                '--get',
+                'core.attributesFile',
+            ]
+        results = call_executable(subprocess_args,'.',60,'git config',allow_nonzero_status=True)
+        return results.stdout
+    
+    time_start = datetime.now()
+    script_name = 'git-textconv-mdd script'
+
+    parser = argparse.ArgumentParser(
+        description="git-textconv-mdd",
+        prog='git-textconv-mdd'
+    )
+    parser.add_argument(
+        '--path',
+        type=str,
+        # help='Choose from: ...',
+        required=True
+    )
+    # args = None
+    # args_rest = None
+    # if( ('arglist_strict' in runscript_config) and (not runscript_config['arglist_strict']) ):
+    #     args, args_rest = parser.parse_known_args()
+    # else:
+    args = parser.parse_args(*argcs,**kwargs)
+    
+    path = None
+    if args.path:
+        path = Path(args.path)
+        path = f'{path.resolve()}'
+    else:
+        raise FileNotFoundError('path: path not provided; please use --path option')
+    
+    # print(f'{script_name}: script started at {time_start}')
+
+    existing_config = read_git_config()
+    if not existing_config:
+        # let's create one
+        print(f'global .gitattributes is not configured; we\'ll create one: {path}')
+        write_program_files(Path(Path(path).parent).resolve(),[(Path(path).name,'*.mdd diff=mdd\n*.mrs linguist-language=VBScript\n*.dms linguist-language=VBScript\n')])
+        assert Path(path).is_file()
+        update_git_config(path)
+        print(f'{script_name}: {STDOUT_COLOR_GREEN}Done!"{STDOUT_COLOR_RESET}')
+    else:
+        path = existing_config.strip()
+        if Path(path).is_file():
+            print('global .gitattributes is configured and does exist')
+            gitattributes_content = None
+            with open(path,'r',encoding='utf-8') as f:
+                gitattributes_content = f.read()
+            if re.match(r'^\s*?\*\.mdd\b[^\n]*?diff=',gitattributes_content,flags=re.M):
+                print('pattern found, skip')
+                sys.exit(0)
+            else:
+                print('pattern not found, adding...')
+                with open(path,'a',encoding='utf-8') as f:
+                    f.write('*.mdd diff=mdd\n')
+            print(f'{script_name}: {STDOUT_COLOR_GREEN}Done!"{STDOUT_COLOR_RESET}')
+        else:
+            print('global .gitattributes is configured but does not exist; exit')
+            sys.exit(0)
 
     time_finish = datetime.now()
     # print(f'{script_name}: finished at {time_finish} (elapsed {time_finish-time_start})')
@@ -244,6 +359,7 @@ def call_install_program(*argcs,**kwargs):
     run_install_actions = {
         'copy-program-files': call_install_copy_program_files_program,
         'git-register': call_install_git_register_program,
+        'git-set-global-gitattributes': call_install_git_update_global_gitattributes,
     }
 
     parser = argparse.ArgumentParser(

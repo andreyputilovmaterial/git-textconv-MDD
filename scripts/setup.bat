@@ -1,6 +1,6 @@
 @ECHO OFF
 
-SET "TARGET_FOLDER=C:\Users\%USERNAME%\AppData\Local\gittextconvmdd"
+SET "TARGET_FOLDER=%USERPROFILE%\AppData\Local\gittextconvmdd"
 
 PUSHD ..
 
@@ -16,6 +16,10 @@ if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failure && pause && exit /b %errorlevel% )
 
 ECHO - register in git
 .\.venv\Scripts\python.exe setup.py --program install --action git-register --path "%TARGET_FOLDER%"
+if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failure && pause && exit /b %errorlevel% )
+
+ECHO - and let's update global gitattributes (should we?)
+.\.venv\Scripts\python.exe setup.py --program install --action git-set-global-gitattributes --path "%USERPROFILE%\.gitattributes_global"
 if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failure && pause && exit /b %errorlevel% )
 
 .\.venv\Scripts\python.exe setup.py --program done
