@@ -2,11 +2,9 @@
 
 ECHO Clear up dist\...
 IF EXIST ..\dist (
-    REM -
-) ELSE (
-    MKDIR ..\dist
+    RD /S /Q ..\dist
 )
-DEL /F /Q ..\dist\*
+MKDIR ..\dist
 
 
 
