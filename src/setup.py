@@ -16,14 +16,17 @@ STDOUT_COLOR_GREEN = "\033[32m"
 if __name__ == '__main__':
     # run as a program
     from GENERATED._VERSION import _VERSION as gittextconvmdd_script_version
+    # NOTICE: if GENERATED is not found, re-run scripts/build.bat, or scripts/get_ver_file.bat
     from setup_files_data import files_data
 elif '.' in __name__:
     # package
     from .GENERATED._VERSION import _VERSION as gittextconvmdd_script_version
+    # NOTICE: if GENERATED is not found, re-run scripts/build.bat, or scripts/get_ver_file.bat
     from .setup_files_data import files_data
 else:
     # included with no parent package
     from GENERATED._VERSION import _VERSION as gittextconvmdd_script_version
+    # NOTICE: if GENERATED is not found, re-run scripts/build.bat, or scripts/get_ver_file.bat
     from setup_files_data import files_data
 
 
@@ -53,7 +56,7 @@ def call_executable(subprocess_args,path,timeout,scope,input=None):
     
     "scope" means part added to the beginning of every line in outputs"""
     print(f'{scope}: launch executable; to verify: path == "{path}", callable == "{subprocess_args[0]}"')
-    argsadd = []
+    argsadd = {}
     if input:
         argsadd['input'] = input
     subprocess_results = subprocess.run(

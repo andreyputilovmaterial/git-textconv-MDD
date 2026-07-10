@@ -11,7 +11,7 @@ import os
 
 
 
-from setup_files_data import files_data
+from src.setup_files_data import files_data
 
 
 # STDOUT_COLOR_RED = "\033[91m"
@@ -216,7 +216,7 @@ def test_test_outputs(tmp_path):
         # assert re.match()
         msg = 'hello, world!'
         assert msg in output, f'Error: output does not include the expected string\n=== EXPECTED ===\n{msg}\n=== END EXPECTED ===\n=== ACTUAL OUTPUT ===\n{output}\n=== END OUTPUT ===\n'
-    script = (Path(ROOT_PROJECT).resolve() / "setup.py").resolve()
+    script = (Path(ROOT_PROJECT).resolve() / "src/setup.py").resolve()
     script_args = ['--program','test']
     result = call_py_script(
         None,
